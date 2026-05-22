@@ -1,6 +1,6 @@
 const fs   = require("fs");
 const path = require("path");
-const dataPath = path.join(process.cwd(), "modules/commands/data/protectedNames.json");
+const dataPath = path.join(process.cwd(), "data", "protectedNames.json");
 
 function loadNames() {
   try { return JSON.parse(fs.readFileSync(dataPath, "utf8")); } catch(e) { return {}; }
@@ -26,14 +26,12 @@ module.exports.config = {
 
 module.exports.onLoad = function() {
   if (!global.protectedNames) global.protectedNames = {};
-  const data = loadNames();
-  Object.assign(global.protectedNames, data);
+  Object.assign(global.protectedNames, loadNames());
 };
 
-module.exports.run = async function({ api, event, args }) {
+module.exports.onStart = async function({ api, event, args }) {
   const { threadID, messageID } = event;
   const newName = args.join(" ").trim();
-
   if (!newName)
     return api.sendMessage("❌ اكتب الاسم الجديد بعد الأمر\nمثال: اسم نادي الفرسان", threadID, messageID);
 
@@ -44,6 +42,6 @@ module.exports.run = async function({ api, event, args }) {
     const data = loadNames();
     data[threadID] = newName;
     saveNames(data);
-    api.sendMessage(`✅ تم تغيير اسم القروب إلى:\n📝 "${newName}"\n\n🛡 الحماية مفعّلة — لن يتمكن أحد من تغييره`, threadID, messageID);
+    api.sendMessage(`✅ تم تغيير اسم القروب إلى:\n📝 "${newName}"\n\n🛡 الحماية مفعّلة`, threadID, messageID);
   });
 };
