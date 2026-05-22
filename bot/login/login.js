@@ -123,9 +123,28 @@ async function getName(userID) {
   } catch { return null; }
 }
 
+// ── مسح جميع الخرائط قبل كل بدء (ضروري عند إعادة الاتصال) ──
+function clearGoatBotMaps() {
+  global.GoatBot.commands         = new Map();
+  global.GoatBot.eventCommands    = new Map();
+  global.GoatBot.aliases          = new Map();
+  global.GoatBot.onFirstChat      = [];
+  global.GoatBot.onChat           = [];
+  global.GoatBot.onEvent          = [];
+  global.GoatBot.onReply          = new Map();
+  global.GoatBot.onReaction       = new Map();
+  global.GoatBot.onAnyEvent       = [];
+  global.GoatBot.commandFilesPath          = [];
+  global.GoatBot.eventCommandsFilesPath    = [];
+  global.client.countDown                  = {};
+}
+
 // ── بدء البوت ──
-(async function startBot() {
+async function startBot() {
   try {
+    // مسح الحالة القديمة دائماً (آمن حتى في أول تشغيل)
+    clearGoatBotMaps();
+
     log.info("ANGEL", "🤖 بدء تسجيل الدخول لـ Angel Bot...");
 
     const appState = await loadAppState();
@@ -194,21 +213,26 @@ async function getName(userID) {
         setTimeout(startBot, 1000);
       };
 
-      // ── الاستماع للرسائل ──
-      const keyListen = Date.now();
-      global.client.callbackListenTime = global.client.callbackListenTime || {};
-      global.client.callbackListenTime[keyListen] = true;
-
-      global.GoatBot.Listening = api.listenMqtt(async (error, event) => {
+      // ── كولباك الاستماع (معرّف بشكل منفصل لإعادة استخدامه في restart) ──
+      const listenCallback = async (error, event) => {
         if (error) {
           const msg = error?.error || error?.message || String(error);
+
           if (msg.includes("Not logged in") || msg.includes("Connection refused")) {
             log.error("LISTEN", `❌ انقطع الاتصال: ${msg}`);
             log.info("LISTEN", "🔄 إعادة الاتصال...");
             try { api.stopListening?.(() => {}); } catch {}
             setTimeout(startBot, 5000);
           } else {
-            log.error("LISTEN", `⚠️ خطأ: ${msg}`);
+            log.error("LISTEN", `⚠️ خطأ في الاستماع: ${msg}`);
+            // ── استدعاء معالج الخطأ (Telegram/Discord إلخ) ──
+            try {
+              await require("./handlerWhenListenHasError.js")({
+                api, error,
+                threadModel, userModel, dashBoardModel, globalModel,
+                threadsData, usersData, dashBoardData, globalData
+              });
+            } catch (e) {}
           }
           return;
         }
@@ -224,13 +248,44 @@ async function getName(userID) {
         } catch (e) {
           log.error("HANDLER", e);
         }
-      });
+      };
 
+      // ── بدء الاستماع ──
+      global.GoatBot.Listening = api.listenMqtt(listenCallback);
       log.info("ANGEL", "👂 يستمع للرسائل...");
+
+      // ── إعادة تشغيل الاستماع دورياً (restartListenMqtt) ──
+      const restartCfg = global.GoatBot.config.restartListenMqtt;
+      if (restartCfg?.enable === true && restartCfg.timeRestart > 0) {
+        const scheduleRestart = () => {
+          setTimeout(async () => {
+            // تأكد أن البوت لا يزال في حالة تشغيل طبيعية
+            if (global.GoatBot.fcaApi !== api) return;
+
+            if (restartCfg.logNoti !== false)
+              log.info("LISTEN", "🔄 إعادة تشغيل الاستماع MQTT دورياً...");
+
+            try { api.stopListening?.(() => {}); } catch {}
+
+            const delay = restartCfg.delayAfterStopListening || 2000;
+            await new Promise(r => setTimeout(r, delay));
+
+            global.GoatBot.Listening = api.listenMqtt(listenCallback);
+
+            if (restartCfg.logNoti !== false)
+              log.info("LISTEN", "✅ تم إعادة تشغيل الاستماع بنجاح");
+
+            scheduleRestart();
+          }, restartCfg.timeRestart);
+        };
+        scheduleRestart();
+      }
     });
   } catch (err) {
     log.error("ANGEL", `❌ خطأ: ${err.message}`);
     log.info("ANGEL", "🔄 إعادة المحاولة بعد 15 ثانية...");
     setTimeout(startBot, 15000);
   }
-})();
+}
+
+startBot();
