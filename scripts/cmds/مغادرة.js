@@ -9,10 +9,10 @@ module.exports.config = {
   cooldowns: 5
 };
 
-module.exports.run = async function({ api, event }) {
+module.exports.onStart = async function({ api, event }) {
   const { threadID, messageID } = event;
   await api.sendMessage("👋 وداعاً! سأغادر القروب الآن...", threadID);
-  return api.removeUserFromGroup(api.getCurrentUserID(), threadID, err => {
-    if (err) api.sendMessage("❌ تعذرت المغادرة\nتأكد أن البوت ليس المدير الوحيد في القروب", threadID, messageID);
+  api.removeUserFromGroup(api.getCurrentUserID(), threadID, err => {
+    if (err) api.sendMessage("❌ تعذرت المغادرة", threadID, messageID);
   });
 };
