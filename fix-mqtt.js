@@ -50,10 +50,17 @@ if (fs.existsSync(parserJsPath)) {
 
   // Fix 2: Replace the "Not supported" default case with a silent skip
   // Facebook sends proprietary/reserved packet types (cmd type 0 = 'reserved')
-  // Instead of emitting an error, just ignore unknown packet types
   content = content.replace(
     /(\s*default:\s*\n\s*)this\._emitError\s*\(\s*new\s+Error\s*\(\s*['"]Not supported['"]\s*\)\s*\)/g,
     '$1/* [fix-mqtt] silently ignore unknown/proprietary packet types from Facebook MQTT */'
+  );
+
+  // Fix 3: Remove QoS > 2 check (line ~67-69)
+  // When header flags are non-standard, QoS bits may compute to 3 (both bits set)
+  // Facebook's non-standard PUBACK headers can cause this
+  content = content.replace(
+    /if\s*\(\s*this\.packet\.qos\s*>\s*2\s*\)\s*\{\s*\n\s*return\s+this\._emitError\s*\(\s*new\s+Error\s*\(\s*['"]Packet must not have both QoS bits set to 1['"]\s*\)\s*\)\s*\n\s*\}/g,
+    '/* [fix-mqtt] allow QoS > 2 for Facebook MQTT non-standard packets */'
   );
 
   if (content !== original) {
@@ -61,6 +68,7 @@ if (fs.existsSync(parserJsPath)) {
     const fixes = [];
     if (content.includes('skipped requiredHeaderFlags')) fixes.push('header-flags');
     if (content.includes('silently ignore unknown')) fixes.push('not-supported');
+    if (content.includes('allow QoS > 2')) fixes.push('qos-check');
     console.log('[fix-mqtt] ✅ Patched mqtt-packet/parser.js:', fixes.join(', '));
   } else {
     const lines = content.split('\n');
@@ -127,6 +135,30 @@ for (const file of allJsFiles) {
       }
     });
   }
+}
+
+// ── Target 3: mqtt pubrel handler — guard against null store ──
+// Error: TypeError: Cannot read properties of null (reading 'get')
+//   at Store.get (store.js:63) ← store was nulled after disconnect
+//   at handlePubrel (pubrel.js:8)
+const pubrelPath = path.join(nmDir, 'mqtt', 'build', 'lib', 'handlers', 'pubrel.js');
+if (fs.existsSync(pubrelPath)) {
+  let content = fs.readFileSync(pubrelPath, 'utf8');
+  const original = content;
+  // Wrap the handler body so if store.get throws (null store), we just ack and continue
+  content = content.replace(
+    /function handlePubrel\s*\([^)]*\)\s*\{/,
+    'function handlePubrel(client, packet, done) { if (!client.outgoing || !client._store) { if (done) done(); return; }'
+  );
+  if (content !== original) {
+    fs.writeFileSync(pubrelPath, content);
+    console.log('[fix-mqtt] ✅ Patched: mqtt/build/lib/handlers/pubrel.js (null store guard)');
+  } else {
+    console.log('[fix-mqtt] ℹ️  pubrel.js: could not auto-patch, showing first 20 lines:');
+    content.split('\n').slice(0, 20).forEach((l, i) => console.log(`  ${i+1}: ${l}`));
+  }
+} else {
+  console.log('[fix-mqtt] ⚠️  mqtt/build/lib/handlers/pubrel.js not found');
 }
 
 console.log('\n[fix-mqtt] Done.');
