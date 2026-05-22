@@ -156,11 +156,16 @@ const pubrelPath = path.join(nmDir, 'mqtt', 'build', 'lib', 'handlers', 'pubrel.
 if (fs.existsSync(pubrelPath)) {
   let content = fs.readFileSync(pubrelPath, 'utf8');
   const original = content;
-  // Wrap the handler: guard against null incomingStore (arrow function syntax)
-  // const handlePubrel = (client, packet, done) => {
+  // Wrap client.incomingStore.get in try-catch
+  // Store.get can throw "Cannot read properties of null" if _inflights is null after disconnect
   content = content.replace(
-    /(const handlePubrel\s*=\s*\([^)]*\)\s*=>\s*\{)/,
-    '$1\n    if (!client || !client.incomingStore) { if (typeof done === \'function\') done(); return; }'
+    /client\.incomingStore\.get\s*\(\s*packet\s*,\s*\(err,\s*pub\)\s*=>\s*\{/,
+    '// [fix-mqtt] wrapped in try-catch for null internal state\n    try {\n    client.incomingStore.get(packet, (err, pub) => {'
+  );
+  // Add closing try-catch after the }); that closes the .get call (before the function closing };)
+  content = content.replace(
+    /(\s*\}\s*\)\s*;\s*\n)(\s*\};\s*\nexports)/,
+    '$1    } catch (e) {\n      // [fix-mqtt] store has null internal state, just ack\n      client[\'_sendPacket\'](comp, callback);\n    }\n$2'
   );
   if (content !== original) {
     fs.writeFileSync(pubrelPath, content);
