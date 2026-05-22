@@ -1,13 +1,15 @@
 module.exports.config = {
   name: "leaveNoti",
   eventType: ["log:unsubscribe"],
-  version: "2.1.0",
+  version: "2.2.0",
   credits: "HĐGN / updated by MOMO",
-  description: "إشعار خروج عضو من المجموعة بصورة"
+  description: "إشعار خروج عضو من المجموعة"
 };
 
-module.exports.run = async function ({ api, event, Users }) {
-  if (event.logMessageData.leftParticipantFbId == api.getCurrentUserID()) return;
+module.exports.onStart = async function({ api, event, usersData }) {
+  if (!event.logMessageData) return;
+  const leftID = event.logMessageData.leftParticipantFbId;
+  if (!leftID || String(leftID) === String(api.getCurrentUserID())) return;
 
   const os     = require('os');
   const path   = require('path');
@@ -15,16 +17,17 @@ module.exports.run = async function ({ api, event, Users }) {
   const moment = require('moment-timezone');
 
   const threadID  = event.threadID;
-  const iduser    = event.logMessageData.leftParticipantFbId;
-  const name      = global.data.userName.get(iduser) || String(iduser);
-  const kicked    = event.author != iduser;
+  const kicked    = event.author != leftID;
   const leaveType = kicked ? 'kicked' : 'left';
-  const time      = moment().tz("Asia/Riyadh").format("DD/MM/YYYY HH:mm");
+  const time      = moment().tz("Africa/Cairo").format("DD/MM/YYYY HH:mm");
+
+  let name = String(leftID);
+  try { name = await usersData.getName(leftID) || name; } catch (e) {}
 
   let imgPath;
   try {
     const { makeLeaveCard } = require('../../utils/makeLeaveCard');
-    const buf = await makeLeaveCard({ name, leaveType, time, uid: iduser });
+    const buf = await makeLeaveCard({ name, leaveType, time, uid: leftID });
     imgPath = path.join(os.tmpdir(), `leave_${Date.now()}.png`);
     fs.writeFileSync(imgPath, buf);
     await new Promise((resolve, reject) => {
