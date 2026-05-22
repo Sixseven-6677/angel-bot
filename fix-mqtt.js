@@ -36,27 +36,36 @@ function findFiles(dir, predicate, results = [], depth = 0) {
 const nmDir = path.join(__dirname, 'node_modules');
 
 // ── Target 1: mqtt-packet/parser.js (uses variable reference, not string literal) ──
-// Patch the line: return this._emitError(new Error(constants.requiredHeaderFlagsErrors[cmdIndex]))
 const parserJsPath = path.join(nmDir, 'mqtt-packet', 'parser.js');
 if (fs.existsSync(parserJsPath)) {
   let content = fs.readFileSync(parserJsPath, 'utf8');
   const original = content;
 
-  // Remove the header flags check entirely (line 60-63 context):
-  // if (cmd's flags don't match required) { ... return this._emitError(...) }
+  // Fix 1: Remove the strict header flags check (line 61-64)
+  // Facebook sends PUBACK/SUBACK with non-zero reserved header bits
   content = content.replace(
     /return\s+this\._emitError\s*\(\s*new\s+Error\s*\(\s*constants\.requiredHeaderFlagsErrors\s*\[\s*cmdIndex\s*\]\s*\)\s*\)/g,
     '/* [fix-mqtt] skipped requiredHeaderFlags check for Facebook MQTT compatibility */'
   );
 
+  // Fix 2: Replace the "Not supported" default case with a silent skip
+  // Facebook sends proprietary/reserved packet types (cmd type 0 = 'reserved')
+  // Instead of emitting an error, just ignore unknown packet types
+  content = content.replace(
+    /(\s*default:\s*\n\s*)this\._emitError\s*\(\s*new\s+Error\s*\(\s*['"]Not supported['"]\s*\)\s*\)/g,
+    '$1/* [fix-mqtt] silently ignore unknown/proprietary packet types from Facebook MQTT */'
+  );
+
   if (content !== original) {
     fs.writeFileSync(parserJsPath, content);
-    console.log('[fix-mqtt] ✅ Patched: mqtt-packet/parser.js');
+    const fixes = [];
+    if (content.includes('skipped requiredHeaderFlags')) fixes.push('header-flags');
+    if (content.includes('silently ignore unknown')) fixes.push('not-supported');
+    console.log('[fix-mqtt] ✅ Patched mqtt-packet/parser.js:', fixes.join(', '));
   } else {
-    // Fallback: show lines 55-70 to debug
     const lines = content.split('\n');
-    console.log('[fix-mqtt] ⚠️  Regex did not match mqtt-packet/parser.js. Lines 55-75:');
-    lines.slice(54, 75).forEach((l, i) => console.log(`  ${i+55}: ${l}`));
+    console.log('[fix-mqtt] ⚠️  Regex did not match mqtt-packet/parser.js. Lines 55-145:');
+    lines.slice(54, 145).forEach((l, i) => console.log(`  ${i+55}: ${l}`));
   }
 } else {
   console.log('[fix-mqtt] ⚠️  mqtt-packet/parser.js not found');
