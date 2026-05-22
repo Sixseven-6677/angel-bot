@@ -121,8 +121,9 @@ module.exports = async function (api, threadModel, userModel, dashBoardModel, gl
 				// ——————————————— CHECK SYNTAXERROR ——————————————— //
 				if (!configCommand)
 					throw new Error(`config of ${text} undefined`);
-				if (!configCommand.category)
-					throw new Error(`category of ${text} undefined`);
+// normalize commandCategory → category (compatibility with Arabic cmds)
+if (!configCommand.category && configCommand.commandCategory) configCommand.category = configCommand.commandCategory;
+if (!configCommand.category) configCommand.category = "عام"; // default if not set
 				if (!commandName)
 					throw new Error(`name of ${text} undefined`);
 				if (!command.onStart)
