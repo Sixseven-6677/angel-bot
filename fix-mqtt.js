@@ -62,14 +62,15 @@ if (fs.existsSync(parserJsPath)) {
     '/* [fix-mqtt] allow QoS > 2 for Facebook MQTT non-standard packets */'
   );
 
-  // Fix 4: Nuclear option — make _emitError a no-op so NO parsing error can
-  // tear down the MQTT connection. The parser still advances correctly because
-  // it uses packet.length (not parsed content) to skip bytes in the buffer.
-  // Facebook sends many non-standard packets; suppressing these keeps the
-  // connection alive so valid message packets are still processed.
+  // Fix 4: Suppress _emitError's 'error' event but keep this.error set.
+  // The parse() loop uses `!this.error` to stop iteration — we must still set it
+  // so the parser exits cleanly after a bad packet (and resets on next parse call).
+  // We just DON'T emit('error') because that triggers mqtt client reconnect.
+  // Facebook sends many non-standard packets; this keeps the connection alive
+  // while valid message packets are still processed normally.
   content = content.replace(
     /_emitError\s*\(\s*err\s*\)\s*\{\s*\n\s*debug\s*\(\s*'_emitError'\s*,\s*err\s*\)\s*\n\s*this\.error\s*=\s*err\s*\n\s*this\.emit\s*\(\s*'error'\s*,\s*err\s*\)\s*\n\s*\}/,
-    `_emitError(err) {\n    // [fix-mqtt] suppress parse errors — Facebook MQTT sends non-standard packets\n    debug('[fix-mqtt] suppressed mqtt parse error:', err && err.message)\n  }`
+    `_emitError(err) {\n    debug('[fix-mqtt] suppressed mqtt parse error:', err && err.message)\n    this.error = err // keep so parse loop exits cleanly\n    // [fix-mqtt] do NOT emit('error') — that triggers mqtt reconnect\n  }`
   );
 
   if (content !== original) {
