@@ -16,11 +16,15 @@ RUN npm install --production --build-from-source
 # نسخ باقي الملفات
 COPY . .
 
-# إنشاء مجلدات البيانات الدائمة
+# إنشاء جميع المجلدات اللازمة (بما فيها database/data للـ SQLite)
 RUN mkdir -p \
-    scripts/cmds/الملاك/data \
+    database/data \
     data \
-    database
+    scripts/cmds/assets/font \
+    scripts/cmds/assets/image \
+    scripts/cmds/tmp \
+    scripts/events/tmp \
+    scripts/cmds/الملاك/data
 
 # متغيرات البيئة الافتراضية
 ENV NODE_ENV=production
