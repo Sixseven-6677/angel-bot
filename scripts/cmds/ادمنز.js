@@ -14,8 +14,7 @@ const boldNum = n => String(n).split('').map(d => '𝟬𝟭𝟮𝟯𝟰𝟱𝟲�
 module.exports.onStart = async function({ api, event }) {
   const { threadID, messageID } = event;
   const adminIDs = (global.GoatBot?.config?.adminBot || []).map(String);
-
-  if (adminIDs.length === 0)
+  if (!adminIDs.length)
     return api.sendMessage('⚠️ لا يوجد ادمن مسجل حالياً', threadID, messageID);
 
   const admins = [];
@@ -26,12 +25,7 @@ module.exports.onStart = async function({ api, event }) {
   }
 
   let text = '⃟─𝗔𝗻𝗴𝗲𝗹 𝗔𝗱𝗺𝗶𝗻 𝗟𝗶𝘀𝘁 〣──\n\n';
-  admins.forEach((a, i) => {
-    text += `𝗔𝗱𝗺𝗶𝗻:${boldNum(i + 1)}\n`;
-    text += `${a.name}\n`;
-    text += `🔑 ${a.id}\n\n`;
-  });
-  text += `𝗧𝗼𝘁𝗮𝗹 𝗔𝗱𝗺𝗶𝗻𝘀: ${boldNum(admins.length)}`;
-
+  admins.forEach((a, i) => { text += `𝗔𝗱𝗺𝗶𝗻:${boldNum(i+1)}\n${a.name}\n🔑 ${a.id}\n\n`; });
+  text += `𝗧𝗼𝘁𝗮𝗹: ${boldNum(admins.length)}`;
   return api.sendMessage(text, threadID, messageID);
 };
