@@ -5,6 +5,7 @@
 const log = require("../../logger/log.js");
 
 let _handler = null;
+let _lastApi = null;
 
 module.exports = async function handleMessage({
   api, event,
@@ -14,12 +15,13 @@ module.exports = async function handleMessage({
   if (!event) return;
 
   try {
-    // تهيئة الـ handler مرة واحدة وإعادة استخدامه
-    if (!_handler) {
+    // إعادة بناء الـ handler عند تغيير الـ api (مثلاً بعد إعادة الاتصال)
+    if (!_handler || _lastApi !== api) {
       _handler = require("./handlerAction.js")(
         api, threadModel, userModel, dashBoardModel, globalModel,
         usersData, threadsData, dashBoardData, globalData
       );
+      _lastApi = api;
     }
     await _handler(event);
   } catch (err) {
