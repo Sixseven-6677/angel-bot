@@ -9,4 +9,4 @@ restartPolicyMaxRetries = 10
 
 [[deploy.healthchecks]]
 type = "tcp"
-timeoutSeconds = 30
+timeoutSeconds = 60
