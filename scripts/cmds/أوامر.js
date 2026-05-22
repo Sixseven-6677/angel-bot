@@ -1,6 +1,6 @@
 module.exports.config = {
   name: "اوامر",
-  version: "3.0.0",
+  version: "3.1.0",
   hasPermssion: 0,
   credits: "FANG",
   description: "عرض قائمة جميع الأوامر",
@@ -9,31 +9,14 @@ module.exports.config = {
   cooldowns: 5
 };
 
-// خريطة الأسماء الإنجليزية لكل أمر
 const EN = {
-  'ادمن':   'Admin',
-  'ادمنز':  'Admins',
-  'اسم':    'Name',
-  'اضافة':  'Add',
-  'اغلاق':  'Lock',
-  'اغاني':  'Music',
-  'طرد':    'Kick',
-  'طلبات':  'Requests',
-  'فتح':    'Unlock',
-  'فانغ':   'Fang',
-  'قروبات': 'Groups',
-  'كنية':   'Nickname',
-  'مدح':    'Praise',
-  'مغادرة': 'Out',
-  'توسيع':  'Domain',
-  'تيك':    'TikTok',
-  'وقت':    'Time',
-  'uptime': 'Uptime',
-  'اوامر':  'Commands',
-  'غزل':    'Flirt',
+  'ادمن': 'Admin', 'ادمنز': 'Admins', 'اسم': 'Name', 'اضافة': 'Add',
+  'اغلاق': 'Lock', 'اغاني': 'Music', 'طرد': 'Kick', 'طلبات': 'Requests',
+  'فتح': 'Unlock', 'قروبات': 'Groups', 'كنية': 'Nickname',
+  'مغادرة': 'Out', 'تيك': 'TikTok', 'uptime': 'Uptime',
+  'اوامر': 'Commands', 'غزل': 'Flirt', 'ping': 'Ping',
 };
 
-// تحويل نص إلى بولد مشطوب
 function bs(text) {
   const BU = {
     'a':'𝗮','b':'𝗯','c':'𝗰','d':'𝗱','e':'𝗲','f':'𝗳','g':'𝗴','h':'𝗵',
@@ -47,14 +30,13 @@ function bs(text) {
   return text.split('').map(c => (BU[c] || c) + '\u0336').join('');
 }
 
-module.exports.run = async function({ api, event, args }) {
+module.exports.onStart = async function({ api, event, args }) {
   const { threadID, messageID } = event;
-  const { commands } = global.client;
+  const commands = global.GoatBot.commands;
 
-  // ── تفاصيل أمر واحد ─────────────────────────────────────────────────────
   if (args[0]) {
     const target = args.join(' ').trim().toLowerCase();
-    const cmd = commands.get(target);
+    const cmd = commands.get(target) || commands.get(global.GoatBot.aliases.get(target));
     if (!cmd) {
       return api.sendMessage(
         `❌ الأمر "${target}" غير موجود\n\nاكتب: اوامر — للقائمة الكاملة`,
@@ -63,26 +45,24 @@ module.exports.run = async function({ api, event, args }) {
     }
     const c = cmd.config;
     const PERM = ['الجميع', '🔒 أدمن غروب', '🔐 مطوّر', '👑 أدمن البوت'];
+    const role = c.role ?? c.hasPermssion ?? 0;
     return api.sendMessage(
-      `⃟─⌯ 𝗙̸𝗮𝗻𝗴 𖥻 〣\n\n` +
+      `⃟─⌯ Angel Bot 𖥻 〣\n\n` +
       `𝗡𝗮𝗺𝗲: ${c.name}\n` +
-      `𝗗𝗲𝘀𝗰: ${c.description || '—'}\n` +
-      `𝗨𝘀𝗮𝗴𝗲: ${c.usages || c.name}\n` +
-      `𝗣𝗲𝗿𝗺: ${PERM[c.hasPermssion] || '—'}\n` +
-      `𝗖𝗱: ${c.cooldowns || 1}s`,
+      `𝗗𝗲𝘀𝗰: ${c.description || c.shortDescription || '—'}\n` +
+      `𝗨𝘀𝗮𝗴𝗲: ${c.usages || c.guide || c.name}\n` +
+      `𝗣𝗲𝗿𝗺: ${PERM[role] || '—'}\n` +
+      `𝗖𝗱: ${c.cooldowns || c.countDown || 1}s`,
       threadID, messageID
     );
   }
 
-  // ── قائمة كل الأوامر ────────────────────────────────────────────────────
-  let text = '⃟─⌯ 𝗙̸𝅥͎̳͡͠𝗮̸̱𝗻̀𝗴˟̲ 𝄋 𝗖̶𝗼̶𝗺̶𝗺̶𝗮̶𝗻̶𝗱̶𝘀 𖥻 〣\n\n';
-
+  let text = '⃟─⌯ 𝗔̶𝗻̶𝗴̶𝗲̶𝗹̶ 𝗕̶𝗼̶𝘁̶ 𖥻 〣\n\n';
   for (const [, cmd] of commands) {
     const name = cmd.config.name;
-    const en   = EN[name] || name;
+    const en = EN[name] || name;
     text += `─⃟𖥻${bs(en)}\n`;
   }
-
   text += '\n━━━━━━━━━━━━━━\n';
   text += '𝗖𝗼𝗺𝗺𝗮𝗻𝗱 [𝗡𝗮𝗺𝗲] = 𝗵𝗲𝗹𝗽𝗶𝗻𝗴';
 
