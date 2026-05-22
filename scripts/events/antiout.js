@@ -1,22 +1,25 @@
 module.exports.config = {
-    name: "antiout",
-    eventType: ["log:unsubscribe"],
-    version: "0.0.1",
-    credits: "DungUwU",
-    description: "Listen events"
+  name: "antiout",
+  eventType: ["log:unsubscribe"],
+  version: "0.0.2",
+  credits: "DungUwU",
+  description: "إعادة إضافة العضو إذا كان antiout مفعّلاً"
 };
 
-module.exports.run = async({ event, api, Threads, Users }) => {
-    let data = (await Threads.getData(event.threadID)).data || {};
-    if (!data.antiout) return;
-    if (event.logMessageData.leftParticipantFbId == api.getCurrentUserID()) return;
-    const name = global.data.userName.get(event.logMessageData.leftParticipantFbId) || await Users.getNameUser(event.logMessageData.leftParticipantFbId);
-    const type = (event.author == event.logMessageData.leftParticipantFbId) ? "tự rời" : "bị quản trị viên đuổi";
-    if (type == "tự rời") {
-        api.addUserToGroup(event.logMessageData.leftParticipantFbId, event.threadID, (error, info) => {
-            if (error) {
-                api.sendMessage(`[ANTIOUT] 𝐊𝐡𝐨̂𝐧𝐠 𝐭𝐡𝐞̂̉ 𝐦𝐨̛̀𝐢 ${name} 𝐯𝐚̀𝐨 𝐥𝐚̣𝐢 𝐧𝐡𝐨́𝐦 `, event.threadID)
-            } else api.sendMessage(`[ANTIOUT] 𝐃𝐚̃ 𝐦𝐨̛̀𝐢 ${name} 𝐯𝐚̀𝐨 𝐥𝐚̣𝐢 𝐧𝐡𝐨́𝐦`, event.threadID);
-        })
+module.exports.onStart = async function({ api, event, threadsData }) {
+  if (!event.logMessageData) return;
+  const leftID = event.logMessageData.leftParticipantFbId;
+  if (!leftID || String(leftID) === String(api.getCurrentUserID())) return;
+
+  try {
+    const threadData = await threadsData.get(event.threadID);
+    if (!threadData?.data?.antiout) return;
+    const type = (event.author == leftID) ? "left" : "kicked";
+    if (type === "left") {
+      api.addUserToGroup(leftID, event.threadID, (err) => {
+        if (err) api.sendMessage("⚠️ لا يمكن إعادة إضافة العضو", event.threadID);
+        else api.sendMessage("🔄 تمت إعادة إضافة العضو تلقائياً", event.threadID);
+      });
     }
-}
+  } catch (e) {}
+};
