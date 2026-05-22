@@ -1,25 +1,22 @@
 module.exports.config = {
   name: "antibd",
   eventType: ["log:user-nickname"],
-  version: "0.0.2",
+  version: "0.0.3",
   credits: "ProCoderCyrus",
-  description: "Chống đổi biệt danh của Bot"
+  description: "حماية كنية البوت من التغيير"
 };
 
-module.exports.run = async function({ api, event, Users, Threads }) {
-    var { logMessageData, threadID, author } = event;
-    var botID = api.getCurrentUserID();
-    var { BOTNAME, ADMINBOT } = global.config;
-
-    // BUG FIX: single clean declaration — Threads.getData returns thread data object
-    var threadData = await Threads.getData(threadID);
-    var nickname = (threadData && threadData.nickname)
-      ? threadData.nickname
-      : `『 ${global.config.PREFIX} 』 ⪼ ${global.config.BOTNAME}`;
-
-    if (logMessageData.participant_id == botID && author != botID && !ADMINBOT.includes(author) && logMessageData.nickname != nickname) {
-        api.changeNickname(nickname, threadID, botID);
-        var info = await Users.getData(author);
-        return api.sendMessage({ body: `${info.name} - 𝐁𝐚̣𝐧 𝐊𝐡𝐨̂𝐧𝐠 𝐂𝐨́ 𝐐𝐮𝐲𝐞̂̀𝐧!!!` }, threadID);
-    }
+module.exports.onStart = async function({ api, event }) {
+  const { logMessageData, threadID, author } = event;
+  if (!logMessageData) return;
+  const botID = String(api.getCurrentUserID());
+  const config = global.GoatBot?.config || {};
+  const prefix = config.prefix || "!";
+  const botName = config.nickNameBot || "Angel";
+  const nickname = `[ ${prefix} ] • ${botName}`;
+  if (String(logMessageData.participant_id) === botID && String(author) !== botID) {
+    try {
+      api.changeNickname(nickname, threadID, botID);
+    } catch (e) {}
+  }
 };
