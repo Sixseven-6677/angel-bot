@@ -16,6 +16,9 @@ RUN npm install --production --build-from-source
 # نسخ باقي الملفات
 COPY . .
 
+# تصحيح مشكلة MQTT مع Facebook (non-standard PUBACK packets)
+RUN node fix-mqtt.js
+
 # إنشاء جميع المجلدات اللازمة (بما فيها database/data للـ SQLite)
 RUN mkdir -p \
     database/data \
