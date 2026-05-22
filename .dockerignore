@@ -4,8 +4,6 @@ yarn-error.log
 
 # ملفات حساسة
 .env
-appstate.json
-account.txt
 
 # قاعدة البيانات (يتم إنشاؤها عند التشغيل)
 *.db
