@@ -1,0 +1,17 @@
+node_modules/
+
+# ملفات حساسة — لا ترفعها أبداً
+.env
+appstate.json
+account.txt
+
+# قاعدة البيانات (تُنشأ تلقائياً)
+*.db
+*.db-shm
+*.db-wal
+scripts/cmds/الملاك/data/
+data/
+
+# ملفات مؤقتة
+*.log
+tmp/

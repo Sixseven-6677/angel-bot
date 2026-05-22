@@ -1,0 +1,13 @@
+kind = "api"
+previewPath = "/angel"
+title = "Angel Bot"
+version = "1.0.0"
+id = "angel-bot-001"
+
+[[services]]
+localPort = 3000
+name = "Angel Bot Dashboard"
+paths = ["/angel"]
+
+[services.development]
+run = "node index.js"

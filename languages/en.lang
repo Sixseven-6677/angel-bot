@@ -1,0 +1,18 @@
+[ help ]
+listedCommands = "╭───[ Commands List ]───╮\n{text}\n╰──────────────────╯"
+commandNotFound = "❌ Command not found: {command}"
+
+[ rank ]
+rankCard = "📊 Rank of {name}"
+levelUp = "🎉 Congrats {name}!\nYou reached level {level}!"
+
+[ daily ]
+alreadyClaimed = "⏳ Already claimed!\nCome back in: {time}"
+claimed = "✅ You got {amount} coins!\n💰 Balance: {balance}"
+
+[ errors ]
+adminOnly = "🔒 Admin only"
+devOnly = "🔒 Dev only"
+cooldown = "⏳ Wait {time}s before using this command again"
+userBanned = "🚫 You are banned"
+threadBanned = "🚫 This thread is banned"

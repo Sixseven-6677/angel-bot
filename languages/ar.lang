@@ -1,0 +1,34 @@
+[ مساعدة ]
+listedCommands = "╭───[ قائمة الأوامر ]───╮\n{text}\n╰──────────────────╯"
+commandNotFound = "❌ الأمر غير موجود: {command}"
+helpHeader = "╭── Angel Bot ──╮\n│ الأوامر المتاحة:\n"
+
+[ rank ]
+rankCard = "📊 رانك {name}"
+levelUp = "🎉 تهانينا {name}!\nوصلت للمستوى {level}!"
+
+[ daily ]
+alreadyClaimed = "⏳ لقد أخذت مكافأتك اليومية بالفعل!\nعد بعد: {time}"
+claimed = "✅ حصلت على {amount} عملة!\n💰 رصيدك الآن: {balance}"
+
+[ balance ]
+balanceMsg = "💰 رصيد {name}: {balance} عملة"
+
+[ ban ]
+banned = "🚫 تم حظر المستخدم {name} بواسطة {admin}"
+unbanned = "✅ تم رفع الحظر عن {name}"
+alreadyBanned = "❌ هذا المستخدم محظور بالفعل"
+
+[ kick ]
+kicked = "✅ تم طرد {name} من القروب"
+cantKick = "❌ لا يمكنني طرد {name}"
+
+[ prefix ]
+changed = "✅ تم تغيير البادئة إلى: {prefix}"
+
+[ errors ]
+adminOnly = "🔒 هذا الأمر للأدمن فقط"
+devOnly = "🔒 هذا الأمر للمطور فقط"
+cooldown = "⏳ انتظر {time} ثانية قبل استخدام هذا الأمر مجدداً"
+userBanned = "🚫 أنت محظور من استخدام البوت"
+threadBanned = "🚫 هذا القروب محظور"

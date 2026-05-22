@@ -1,0 +1,19 @@
+node_modules
+npm-debug.log
+yarn-error.log
+
+# ملفات حساسة
+.env
+appstate.json
+account.txt
+
+# قاعدة البيانات (يتم إنشاؤها عند التشغيل)
+*.db
+*.db-shm
+*.db-wal
+scripts/cmds/الملاك/data/
+
+# ملفات التطوير
+.git
+.gitignore
+*.log
