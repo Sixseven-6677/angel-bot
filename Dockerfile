@@ -17,7 +17,20 @@ RUN npm install --production --build-from-source
 COPY . .
 
 # تصحيح مشكلة MQTT مع Facebook (non-standard PUBACK packets)
-RUN node fix-mqtt.js
+# المرحلة 1: سكريبت Node.js للـ patch
+RUN node fix-mqtt.js || true
+# المرحلة 2: sed كـ fallback في حال فشل الـ regex
+RUN find /app/node_modules -name "parser.js" -path "*/mqtt-packet/*" | \
+    while read f; do \
+      if grep -q "Invalid header flag bits" "$f" 2>/dev/null; then \
+        sed -i \
+          -e 's/if (fixedHeader & 0x0F)/if (false \&\& fixedHeader \& 0x0F)/g' \
+          -e 's/if (fixedHeader & 0x0f)/if (false \&\& fixedHeader \& 0x0f)/g' \
+          -e 's/if (fixed & 0x0F)/if (false \&\& fixed \& 0x0F)/g' \
+          -e 's/if (flags & 0x0F)/if (false \&\& flags \& 0x0F)/g' \
+          "$f" && echo "[sed] Patched: $f" || true; \
+      fi; \
+    done
 
 # إنشاء جميع المجلدات اللازمة (بما فيها database/data للـ SQLite)
 RUN mkdir -p \

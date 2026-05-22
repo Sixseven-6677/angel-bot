@@ -214,6 +214,8 @@ async function startBot() {
       };
 
       // ── كولباك الاستماع (معرّف بشكل منفصل لإعادة استخدامه في restart) ──
+      let _mqttErrorCount = 0;
+      let _mqttRestartTimer = null;
       const listenCallback = async (error, event) => {
         if (error) {
           const msg = error?.error || error?.message || String(error);
@@ -223,6 +225,34 @@ async function startBot() {
             log.info("LISTEN", "🔄 إعادة الاتصال...");
             try { api.stopListening?.(() => {}); } catch {}
             setTimeout(startBot, 5000);
+          } else if (
+            msg.includes("Invalid header flag bits") ||
+            msg.includes("Cannot parse topic") ||
+            msg.includes("MQTT")
+          ) {
+            // أخطاء MQTT من Facebook (non-standard packets) — نعيد الاتصال بعد عدة أخطاء
+            _mqttErrorCount++;
+            if (_mqttErrorCount <= 2) {
+              log.error("LISTEN", `⚠️ خطأ MQTT (${_mqttErrorCount}): ${msg}`);
+            }
+            if (_mqttErrorCount === 10 && !_mqttRestartTimer) {
+              log.info("LISTEN", "🔄 تكررت أخطاء MQTT — إعادة تشغيل الاستماع...");
+              _mqttRestartTimer = setTimeout(async () => {
+                _mqttErrorCount = 0;
+                _mqttRestartTimer = null;
+                try { api.stopListening?.(() => {}); } catch {}
+                await new Promise(r => setTimeout(r, 3000));
+                if (global.GoatBot.fcaApi === api) {
+                  global.GoatBot.Listening = api.listenMqtt(listenCallback);
+                  log.info("LISTEN", "✅ تم إعادة تشغيل الاستماع");
+                }
+              }, 2000);
+            } else if (_mqttErrorCount > 50 && !_mqttRestartTimer) {
+              // إذا استمرت الأخطاء أكثر من 50 مرة، أعد تسجيل الدخول كاملاً
+              log.error("LISTEN", "❌ فشل MQTT المتكرر — إعادة تسجيل الدخول...");
+              try { api.stopListening?.(() => {}); } catch {}
+              setTimeout(startBot, 5000);
+            }
           } else {
             log.error("LISTEN", `⚠️ خطأ في الاستماع: ${msg}`);
             // ── استدعاء معالج الخطأ (Telegram/Discord إلخ) ──
@@ -236,6 +266,8 @@ async function startBot() {
           }
           return;
         }
+        // إعادة تعيين عداد أخطاء MQTT عند وصول رسالة طبيعية
+        if (_mqttErrorCount > 0) _mqttErrorCount = 0;
 
         if (!event) return;
 
