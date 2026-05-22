@@ -57,10 +57,19 @@ if (fs.existsSync(parserJsPath)) {
 
   // Fix 3: Remove QoS > 2 check (line ~67-69)
   // When header flags are non-standard, QoS bits may compute to 3 (both bits set)
-  // Facebook's non-standard PUBACK headers can cause this
   content = content.replace(
     /if\s*\(\s*this\.packet\.qos\s*>\s*2\s*\)\s*\{\s*\n\s*return\s+this\._emitError\s*\(\s*new\s+Error\s*\(\s*['"]Packet must not have both QoS bits set to 1['"]\s*\)\s*\)\s*\n\s*\}/g,
     '/* [fix-mqtt] allow QoS > 2 for Facebook MQTT non-standard packets */'
+  );
+
+  // Fix 4: Nuclear option — make _emitError a no-op so NO parsing error can
+  // tear down the MQTT connection. The parser still advances correctly because
+  // it uses packet.length (not parsed content) to skip bytes in the buffer.
+  // Facebook sends many non-standard packets; suppressing these keeps the
+  // connection alive so valid message packets are still processed.
+  content = content.replace(
+    /_emitError\s*\(\s*err\s*\)\s*\{\s*\n\s*debug\s*\(\s*'_emitError'\s*,\s*err\s*\)\s*\n\s*this\.error\s*=\s*err\s*\n\s*this\.emit\s*\(\s*'error'\s*,\s*err\s*\)\s*\n\s*\}/,
+    `_emitError(err) {\n    // [fix-mqtt] suppress parse errors — Facebook MQTT sends non-standard packets\n    debug('[fix-mqtt] suppressed mqtt parse error:', err && err.message)\n  }`
   );
 
   if (content !== original) {
@@ -69,11 +78,12 @@ if (fs.existsSync(parserJsPath)) {
     if (content.includes('skipped requiredHeaderFlags')) fixes.push('header-flags');
     if (content.includes('silently ignore unknown')) fixes.push('not-supported');
     if (content.includes('allow QoS > 2')) fixes.push('qos-check');
+    if (content.includes('suppress parse errors')) fixes.push('emitError-noop');
     console.log('[fix-mqtt] ✅ Patched mqtt-packet/parser.js:', fixes.join(', '));
   } else {
     const lines = content.split('\n');
-    console.log('[fix-mqtt] ⚠️  Regex did not match mqtt-packet/parser.js. Lines 55-145:');
-    lines.slice(54, 145).forEach((l, i) => console.log(`  ${i+55}: ${l}`));
+    console.log('[fix-mqtt] ⚠️  Regex did not match mqtt-packet/parser.js. Lines 795-810:');
+    lines.slice(794, 810).forEach((l, i) => console.log(`  ${i+795}: ${l}`));
   }
 } else {
   console.log('[fix-mqtt] ⚠️  mqtt-packet/parser.js not found');
@@ -145,10 +155,11 @@ const pubrelPath = path.join(nmDir, 'mqtt', 'build', 'lib', 'handlers', 'pubrel.
 if (fs.existsSync(pubrelPath)) {
   let content = fs.readFileSync(pubrelPath, 'utf8');
   const original = content;
-  // Wrap the handler body so if store.get throws (null store), we just ack and continue
+  // Wrap the handler: guard against null incomingStore (arrow function syntax)
+  // const handlePubrel = (client, packet, done) => {
   content = content.replace(
-    /function handlePubrel\s*\([^)]*\)\s*\{/,
-    'function handlePubrel(client, packet, done) { if (!client.outgoing || !client._store) { if (done) done(); return; }'
+    /(const handlePubrel\s*=\s*\([^)]*\)\s*=>\s*\{)/,
+    '$1\n    if (!client || !client.incomingStore) { if (typeof done === \'function\') done(); return; }'
   );
   if (content !== original) {
     fs.writeFileSync(pubrelPath, content);
