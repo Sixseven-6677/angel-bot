@@ -9,45 +9,40 @@ const path = require('path');
 const fontDir = process.cwd() + "/scripts/cmds/assets/font";
 const canvasFontDir = process.cwd() + "/scripts/cmds/canvas/fonts";
 
-registerFont(path.join(fontDir, "NotoSans-Bold.ttf"), {
-    family: 'NotoSans',
-    weight: 'bold'
-});
-
-registerFont(path.join(fontDir, "NotoSans-SemiBold.ttf"), {
-    family: 'NotoSans',
-    weight: '600'
-});
-
-registerFont(path.join(fontDir, "NotoSans-Regular.ttf"), {
-    family: 'NotoSans',
-    weight: 'normal'
-});
-
-registerFont(path.join(fontDir, "BeVietnamPro-Bold.ttf"), {
-    family: 'BeVietnamPro',
-    weight: 'bold'
-});
-
-registerFont(path.join(fontDir, "BeVietnamPro-SemiBold.ttf"), {
-    family: 'BeVietnamPro',
-    weight: '600'
-});
-
-registerFont(path.join(fontDir, "BeVietnamPro-Regular.ttf"), {
-    family: 'BeVietnamPro',
-    weight: 'normal'
-});
-
-registerFont(path.join(fontDir, "Kanit-SemiBoldItalic.ttf"), {
-    family: 'Kanit',
-    weight: '600',
-    style: 'italic'
-});
-
-registerFont(path.join(canvasFontDir, "Rounded.otf"), {
-    family: 'Rounded'
-});
+try {
+    registerFont(path.join(fontDir, "NotoSans-Bold.ttf"), {
+        family: 'NotoSans',
+        weight: 'bold'
+    });
+    registerFont(path.join(fontDir, "NotoSans-SemiBold.ttf"), {
+        family: 'NotoSans',
+        weight: '600'
+    });
+    registerFont(path.join(fontDir, "NotoSans-Regular.ttf"), {
+        family: 'NotoSans',
+        weight: 'normal'
+    });
+    registerFont(path.join(fontDir, "BeVietnamPro-Bold.ttf"), {
+        family: 'BeVietnamPro',
+        weight: 'bold'
+    });
+    registerFont(path.join(fontDir, "BeVietnamPro-SemiBold.ttf"), {
+        family: 'BeVietnamPro',
+        weight: '600'
+    });
+    registerFont(path.join(fontDir, "BeVietnamPro-Regular.ttf"), {
+        family: 'BeVietnamPro',
+        weight: 'normal'
+    });
+    registerFont(path.join(fontDir, "Kanit-SemiBoldItalic.ttf"), {
+        family: 'Kanit',
+        weight: '600',
+        style: 'italic'
+    });
+    registerFont(path.join(canvasFontDir, "Rounded.otf"), {
+        family: 'Rounded'
+    });
+} catch (e) {}
 
 async function createWelcomeCanvas(gcImg, img1, img2, userName, userNumber, threadName, potato) {
     const width = 1200;
@@ -277,7 +272,7 @@ async function createWelcomeCanvas(gcImg, img1, img2, userName, userNumber, thre
             ctx.fill();
         }
     }
-    
+
     await drawCircularImage(img2, width - 120, 100, 55, '#22c55e');
     ctx.font = 'bold 20px "NotoSans", "BeVietnamPro", sans-serif';
     ctx.fillStyle = '#22c55e';
@@ -317,7 +312,7 @@ module.exports = {
     config: {
         name: "welcome",
         version: "1.3",
-        author: "Neoaz ゐ",//Adapted from @procoder Allou Mohammed
+        author: "Neoaz ゐ",
         category: "events"
     },
 
@@ -326,7 +321,7 @@ module.exports = {
     }) => {
         const type = "log:subscribe";
         if (event.logMessageType != type) return;
-        
+
         try {
             await threadsData.refreshInfo(event.threadID);
             const threadsInfo = await threadsData.get(event.threadID);
@@ -339,13 +334,13 @@ module.exports = {
             const usernumber = threadsInfo.members?.length || 1;
             const userName = event.logMessageData.addedParticipants[0].fullName;
             const authorN = await usersData.getName(by);
-            
+
             const welcomeImage = await createWelcomeCanvas(gcImg, img1, img2, userName, usernumber, threadName, authorN);
-            
+
             const imagePath = path.join(__dirname, '../cmds/', global.utils.randomString(4) + ".png");
             const writeStream = fs.createWriteStream(imagePath);
             welcomeImage.pipe(writeStream);
-            
+
             await new Promise((resolve) => {
                 writeStream.on('finish', resolve);
             });
@@ -353,7 +348,7 @@ module.exports = {
             await message.send({
                 attachment: fs.createReadStream(imagePath)
             });
-            
+
             fs.unlinkSync(imagePath);
         } catch (error) {
             console.error("[WELCOME] Error:", error.message);
