@@ -10,35 +10,16 @@ module.exports.config = {
 };
 
 const poems = [
-  "ما شافت عيني مثلك يا جميل
-وجهك ضياء والثغرك نخيل
-يا من سكنت في الفؤاد طويل
-انتَ الحياة وانتَ الدليل",
-  "عيونك بحر ما له شطوط
-قلبي عندك واثنين خطوط
-يا غالي فوق كل الحدود
-انتَ الوطن وانتَ السكوت",
-  "لو كان الجمال يُباع في السوق
-أنتَ ما تساوي بكل الأسواق
-يا نور عيني وياسمين الطريق
-وجهك سلب عقلي بالحق",
-  "رأيتك فاستوقف قلبي وقال
-هذا الجمال ما له مثال
-يا من أنار دربي والمجال
-بقيت في بالي ليل ونهار",
-  "أنتَ الربيع الذي لا يغيب
-وانتَ القمر في دنيا الغريب
-يا من قلبي اليك يجيب
-انتَ الحبيب وانتَ القريب",
-  "ما خلقت مثلك عيناي ترى
-ولا قلبي عشق مثلك مرا
-انتَ الضحكة والأمل والسرا
-ويا جمالك يا من عطرا"
+  "ما شافت عيني مثلك يا جميل\nوجهك ضياء والثغرك نخيل",
+  "عيونك بحر ما له شطوط\nقلبي عندك واثنين خطوط",
+  "لو كان الجمال يُباع في السوق\nأنتَ ما تساوي بكل الأسواق",
+  "رأيتك فاستوقف قلبي وقال\nهذا الجمال ما له مثال",
+  "أنتَ الربيع الذي لا يغيب\nوانتَ القمر في دنيا الغريب",
+  "ما خلقت مثلك عيناي ترى\nولا قلبي عشق مثلك مرا"
 ];
 
-module.exports.run = async function({ api, event }) {
+module.exports.onStart = async function({ api, event }) {
   const { threadID, messageID, messageReply } = event;
-
   if (!messageReply)
     return api.sendMessage("❌ الرجاء الرد على رسالة الشخص الذي تريد التغزل به", threadID, messageID);
 
@@ -47,8 +28,5 @@ module.exports.run = async function({ api, event }) {
   try { const info = await api.getUserInfo(targetID); name = info[targetID]?.name || targetID; } catch(e) {}
 
   const poem = poems[Math.floor(Math.random() * poems.length)];
-  return api.sendMessage(
-    `💖 يا ${name}...\n\n${poem}`,
-    threadID, messageID
-  );
+  return api.sendMessage(`💖 يا ${name}...\n\n${poem}`, threadID, messageID);
 };
