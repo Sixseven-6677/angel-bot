@@ -1,6 +1,6 @@
 const fs   = require("fs");
 const path = require("path");
-const dataPath = path.join(process.cwd(), "modules/commands/data/ighlaq.json");
+const dataPath = path.join(process.cwd(), "data", "ighlaq.json");
 
 module.exports.config = {
   name: "فتح",
@@ -13,13 +13,11 @@ module.exports.config = {
   cooldowns: 3
 };
 
-module.exports.run = async function({ api, event }) {
+module.exports.onStart = async function({ api, event }) {
   const { threadID, messageID } = event;
   if (!global.ighlaqData) global.ighlaqData = new Map();
-
-  if (!global.ighlaqData.has(threadID)) {
+  if (!global.ighlaqData.has(threadID))
     return api.sendMessage("⚠️ البوت مفتوح بالفعل في هذا القروب", threadID, messageID);
-  }
 
   global.ighlaqData.delete(threadID);
   try {
@@ -28,6 +26,5 @@ module.exports.run = async function({ api, event }) {
     delete data[threadID];
     fs.writeFileSync(dataPath, JSON.stringify(data, null, 2));
   } catch(e) {}
-
-  return api.sendMessage("✅ تم فتح البوت\nالجميع يقدر يستخدم البوت الآن 🔓", threadID, messageID);
+  return api.sendMessage("✅ تم فتح البوت 🔓", threadID, messageID);
 };
