@@ -1,11 +1,16 @@
 /**
- * Patch mqtt-packet (and bundled mqtt) to handle Facebook's non-standard MQTT packets.
+ * Patch mqtt-packet and bundled mqtt to handle Facebook's non-standard MQTT packets.
  *
- * Root cause: mqtt-packet v9.0.2 parser.js line ~63:
+ * Root cause identified in mqtt-packet v9.0.2 parser.js ~line 63:
  *   return this._emitError(new Error(constants.requiredHeaderFlagsErrors[cmdIndex]))
- * 
- * Facebook sends PUBACK/SUBACK packets with non-zero reserved header bits.
- * The spec says these MUST be 0, but Facebook sets them. This patch skips the check.
+ *
+ * This is inside a check that validates MQTT fixed header flag bits.
+ * Facebook sends PUBACK/SUBACK packets with non-zero reserved header bits (violates spec).
+ * This patch removes the error so the parser can continue processing these packets.
+ *
+ * The error string "Invalid header flag bits" is defined in constants.js and
+ * referenced via constants.requiredHeaderFlagsErrors[cmdIndex] in parser.js —
+ * so a simple grep for the string won't find the actual throw in parser.js.
  */
 const fs = require('fs');
 const path = require('path');
@@ -30,58 +35,89 @@ function findFiles(dir, predicate, results = [], depth = 0) {
 
 const nmDir = path.join(__dirname, 'node_modules');
 
-// Find ALL JS files containing "Invalid header flag bits"
-console.log('[fix-mqtt] Scanning node_modules for "Invalid header flag bits"...');
-const matchingFiles = findFiles(nmDir, (name) => name.endsWith('.js')).filter(f => {
+// ── Target 1: mqtt-packet/parser.js (uses variable reference, not string literal) ──
+// Patch the line: return this._emitError(new Error(constants.requiredHeaderFlagsErrors[cmdIndex]))
+const parserJsPath = path.join(nmDir, 'mqtt-packet', 'parser.js');
+if (fs.existsSync(parserJsPath)) {
+  let content = fs.readFileSync(parserJsPath, 'utf8');
+  const original = content;
+
+  // Remove the header flags check entirely (line 60-63 context):
+  // if (cmd's flags don't match required) { ... return this._emitError(...) }
+  content = content.replace(
+    /return\s+this\._emitError\s*\(\s*new\s+Error\s*\(\s*constants\.requiredHeaderFlagsErrors\s*\[\s*cmdIndex\s*\]\s*\)\s*\)/g,
+    '/* [fix-mqtt] skipped requiredHeaderFlags check for Facebook MQTT compatibility */'
+  );
+
+  if (content !== original) {
+    fs.writeFileSync(parserJsPath, content);
+    console.log('[fix-mqtt] ✅ Patched: mqtt-packet/parser.js');
+  } else {
+    // Fallback: show lines 55-70 to debug
+    const lines = content.split('\n');
+    console.log('[fix-mqtt] ⚠️  Regex did not match mqtt-packet/parser.js. Lines 55-75:');
+    lines.slice(54, 75).forEach((l, i) => console.log(`  ${i+55}: ${l}`));
+  }
+} else {
+  console.log('[fix-mqtt] ⚠️  mqtt-packet/parser.js not found');
+}
+
+// ── Target 2: ALL files containing "Invalid header flag bits" as a string literal ──
+// (bundled mqtt dist files: mqtt.js, mqtt.esm.js, mqtt.min.js)
+console.log('\n[fix-mqtt] Scanning for bundled "Invalid header flag bits" string...');
+const allJsFiles = findFiles(nmDir, (name) => name.endsWith('.js')).filter(f => {
   try { return fs.readFileSync(f, 'utf8').includes('Invalid header flag bits'); } catch (e) { return false; }
 });
-console.log(`[fix-mqtt] Found ${matchingFiles.length} file(s):`, matchingFiles.map(f => path.relative(nmDir, f)));
+console.log(`[fix-mqtt] Found ${allJsFiles.length} bundled file(s):`, allJsFiles.map(f => path.relative(nmDir, f)));
 
-let patchedCount = 0;
+for (const file of allJsFiles) {
+  // Skip test files and constants definition files
+  if (file.includes('test.js') || file.includes('constants.js')) {
+    console.log('[fix-mqtt] Skipping:', path.relative(nmDir, file));
+    continue;
+  }
 
-for (const file of matchingFiles) {
   let content = fs.readFileSync(file, 'utf8');
   const original = content;
 
-  // ── Pattern A: mqtt-packet v9 style ──
-  // return this._emitError(new Error(constants.requiredHeaderFlagsErrors[cmdIndex]))
+  // Pattern A: variable-based error using constants reference
   content = content.replace(
     /return\s+this\._emitError\s*\(\s*new\s+Error\s*\(\s*constants\.requiredHeaderFlagsErrors\s*\[\s*cmdIndex\s*\]\s*\)\s*\)/g,
-    '/* [fix-mqtt] skip non-standard header flag check for Facebook MQTT */'
+    '/* [fix-mqtt] skip */'
   );
 
-  // ── Pattern B: any _emitError with "Invalid header flag bits" error ──
+  // Pattern B: direct string error emit (for bundled files that inline the string)
   content = content.replace(
-    /(?:return\s+)?(?:this\._emitError|parser\._emitError)\s*\(\s*new\s+Error\s*\(\s*['"`]Invalid header flag bits[^'"`]*['"`]\s*\)\s*\)/g,
-    '/* [fix-mqtt] skip invalid header flag bits error */'
+    /(?:return\s+)?(?:this\._emitError|parser\._emitError)\s*\(\s*new\s+Error\s*\(\s*["'`]Invalid header flag bits[^"'`]*["'`]\s*\)\s*\)/g,
+    '/* [fix-mqtt] skip invalid header flag bits */'
   );
 
-  // ── Pattern C: emit('error') with "Invalid header flag bits" ──
+  // Pattern C: minified form - find the pattern around "Invalid header flag bits"
+  // Minified: might look like: return n._emitError(new Error("Invalid header flag bits..."))
   content = content.replace(
-    /(?:return\s+)?(?:this|parser)\.emit\s*\(\s*['"]error['"]\s*,\s*new\s+Error\s*\(\s*['"`]Invalid header flag bits[^'"`]*['"`]\s*\)\s*\)/g,
-    '/* [fix-mqtt] skip invalid header flag bits error */'
+    /[a-zA-Z_$](?:\.[a-zA-Z_$]+)?\._emitError\(new Error\("Invalid header flag bits[^"]*"\)\)/g,
+    '/* [fix-mqtt] skip */'
   );
 
-  // ── Pattern D: bundled mqtt / minified code - find the check block ──
-  // if(t!==e[r]){...emitError...requiredHeaderFlagsErrors...}  or similar
+  // Pattern D: minified with variable reference - any _emitError with requiredHeaderFlagsErrors
   content = content.replace(
-    /if\s*\([^)]*requiredHeaderFlags[^)]*\)\s*\{[^}]*requiredHeaderFlagsErrors[^}]*\}/gs,
-    '/* [fix-mqtt] skip required header flags check */'
+    /[a-zA-Z_$](?:\.[a-zA-Z_$]+)?\._emitError\(new Error\([a-zA-Z_$][a-zA-Z0-9_$]*\.requiredHeaderFlagsErrors\[[a-zA-Z_$][a-zA-Z0-9_$]*\]\)\)/g,
+    '/* [fix-mqtt] skip */'
   );
 
   if (content !== original) {
     fs.writeFileSync(file, content);
     console.log('[fix-mqtt] ✅ Patched:', path.relative(nmDir, file));
-    patchedCount++;
   } else {
-    // Show context for debugging if nothing matched
+    // For debugging: show lines containing "Invalid header flag"
     const lines = content.split('\n');
     lines.forEach((line, i) => {
-      if (line.includes('requiredHeaderFlagsErrors') || line.includes('Invalid header flag')) {
-        console.log(`[fix-mqtt] ⚠️ No patch applied — ${path.relative(nmDir, file)} line ${i+1}: ${line.trim().slice(0, 120)}`);
+      if (line.includes('Invalid header flag')) {
+        const snippet = line.substring(Math.max(0, line.indexOf('Invalid header flag') - 50), line.indexOf('Invalid header flag') + 100);
+        console.log(`[fix-mqtt] ⚠️  ${path.relative(nmDir, file)} line ${i+1}: ...${snippet}...`);
       }
     });
   }
 }
 
-console.log(`\n[fix-mqtt] Done. Patched ${patchedCount}/${matchingFiles.length} files.`);
+console.log('\n[fix-mqtt] Done.');
