@@ -1,0 +1,90 @@
+{
+  "language": "ar",
+  "nickNameBot": "Angel",
+  "prefix": "!",
+  "adminBot": [],
+  "premiumUsers": [],
+  "devUsers": [],
+  "antiInbox": false,
+  "adminOnly": {
+    "enable": false,
+    "ignoreCommand": ["مساعدة", "وقت", "رانك"]
+  },
+  "whiteListMode": {
+    "enable": false,
+    "whiteListIds": []
+  },
+  "whiteListModeThread": {
+    "enable": false,
+    "whiteListThreadIds": []
+  },
+  "database": {
+    "type": "sqlite",
+    "uriMongodb": "",
+    "autoSyncWhenStart": false,
+    "autoRefreshThreadInfoFirstTime": true
+  },
+  "timeZone": "Africa/Cairo",
+  "dashBoard": {
+    "enable": false,
+    "port": 3000
+  },
+  "serverUptime": {
+    "enable": false,
+    "port": 3000
+  },
+  "spamProtection": {
+    "commandThreshold": 8,
+    "timeWindow": 10,
+    "banDuration": 24
+  },
+  "autoRestart": {
+    "time": null
+  },
+  "autoRefreshFbstate": true,
+  "autoReloginWhenChangeAccount": false,
+  "autoRestartWhenListenMqttError": false,
+  "restartListenMqtt": {
+    "enable": true,
+    "timeRestart": 3600000,
+    "delayAfterStopListening": 2000,
+    "logNoti": true
+  },
+  "hideNotiMessage": {
+    "commandNotFound": false,
+    "adminOnly": false,
+    "threadBanned": false,
+    "userBanned": false,
+    "needRoleToUseCmd": false
+  },
+  "logEvents": {
+    "disableAll": false,
+    "message": true,
+    "message_reaction": true,
+    "message_unsend": true,
+    "message_reply": true,
+    "event": true,
+    "read_receipt": false,
+    "typ": false,
+    "presence": false
+  },
+  "optionsFca": {
+    "forceLogin": true,
+    "listenEvents": true,
+    "logLevel": "error",
+    "selfListen": false,
+    "selfListenEvent": true,
+    "autoMarkDelivery": false,
+    "autoReconnect": false,
+    "userAgent": "Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1"
+  },
+  "economy": {
+    "dailyReward": 500,
+    "dailyCooldown": 86400000,
+    "transferFee": 0
+  },
+  "rank": {
+    "xpPerMessage": 10,
+    "levels": [0, 100, 300, 600, 1000, 1500, 2200, 3000, 4000, 5500, 7000]
+  }
+}
