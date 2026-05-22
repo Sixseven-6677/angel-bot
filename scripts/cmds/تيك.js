@@ -14,12 +14,11 @@ module.exports.config = {
   cooldowns: 15
 };
 
-module.exports.run = async function({ api, event, args }) {
+module.exports.onStart = async function({ api, event, args }) {
   const { threadID, messageID } = event;
   const query = args.join(" ").trim();
-
   if (!query)
-    return api.sendMessage("🔍 اكتب كلمة البحث بعد الأمر\nمثال: !تيك اغاني عربية", threadID, messageID);
+    return api.sendMessage("🔍 اكتب كلمة البحث بعد الأمر\nمثال: تيك اغاني عربية", threadID, messageID);
 
   const waitMsg = await new Promise(r =>
     api.sendMessage(`🔍 جاري البحث عن "${query}" في تيك توك...`, threadID, (e, i) => r(i))
@@ -27,40 +26,27 @@ module.exports.run = async function({ api, event, args }) {
 
   try {
     const searchRes = await axios.get("https://www.tikwm.com/api/feed/search", {
-      params: { keywords: query, count: 10, cursor: 0, HD: 1 },
-      timeout: 15000
+      params: { keywords: query, count: 10, cursor: 0, HD: 1 }, timeout: 15000
     });
-
     const videos = searchRes.data?.data?.videos;
-    if (!videos || videos.length === 0)
-      throw new Error("لم أجد نتائج لهذا البحث");
+    if (!videos?.length) throw new Error("لم أجد نتائج لهذا البحث");
 
     const video = videos[Math.floor(Math.random() * Math.min(5, videos.length))];
-
-    if (!video?.play)
-      throw new Error("تعذر جلب الفيديو");
+    if (!video?.play) throw new Error("تعذر جلب الفيديو");
 
     const tmpPath = path.join(os.tmpdir(), `tiktok_${Date.now()}.mp4`);
-    const download = await axios.get(video.play, {
-      responseType: "arraybuffer",
-      timeout: 30000
-    });
+    const download = await axios.get(video.play, { responseType: "arraybuffer", timeout: 30000 });
     fs.writeFileSync(tmpPath, Buffer.from(download.data));
 
     const author = video.author?.nickname || "مجهول";
     const desc   = (video.title || "").slice(0, 100) || "بدون وصف";
     const likes  = Number(video.digg_count || 0).toLocaleString("ar");
-    const views  = Number(video.play_count || 0).toLocaleString("ar");
 
     if (waitMsg) api.unsendMessage(waitMsg.messageID);
-
     api.sendMessage({
-      body: `🎬 ${desc}\n👤 ${author}\n❤️ ${likes} إعجاب  |  👁️ ${views} مشاهدة\n🔍 بحث: ${query}`,
+      body: `🎬 ${desc}\n👤 ${author}\n❤️ ${likes} إعجاب\n🔍 بحث: ${query}`,
       attachment: fs.createReadStream(tmpPath)
-    }, threadID, () => {
-      try { fs.unlinkSync(tmpPath); } catch(e) {}
-    }, messageID);
-
+    }, threadID, () => { try { fs.unlinkSync(tmpPath); } catch(e) {} }, messageID);
   } catch(err) {
     if (waitMsg) api.unsendMessage(waitMsg.messageID);
     api.sendMessage(`❌ ${err.message}`, threadID, messageID);
